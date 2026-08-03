@@ -135,3 +135,4 @@ This project is developed for learning, portfolio, and future startup purposes.
 B.Tech CSE (AI & DS)
 
 Building technology to improve hostel student health through AI.
+Project deployed successfully using Vercel.
