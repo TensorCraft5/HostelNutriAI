@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { auth } from './firebase/firebase';
 import {
   Utensils,
   Bot,
@@ -84,7 +86,14 @@ interface NotificationItem {
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [devicePreview, setDevicePreview] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
   const [waterAmount, setWaterAmount] = useState(1750); // ml
@@ -98,13 +107,82 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      setAuthChecked(true);
+
+      if (user && (currentScreen === 'landing' || currentScreen === 'auth')) {
+        setCurrentScreen('dashboard');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentScreen]);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      showToast('Signed in with Google!');
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      setAuthError(error?.message || 'Google sign-in failed.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async () => {
+    if (!authEmail.trim() || !authPassword) {
+      setAuthError('Please enter your email and password.');
+      return;
+    }
+
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+
+      if (authMode === 'signup') {
+        await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+        showToast('Account created successfully!');
+      } else {
+        await signInWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+        showToast('Logged in successfully!');
+      }
+    } catch (error: any) {
+      const messages: Record<string, string> = {
+        'auth/email-already-in-use': 'An account already exists with this email.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/invalid-credential': 'Invalid email or password.',
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/weak-password': 'Password must contain at least 6 characters.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.'
+      };
+      setAuthError(messages[error?.code] || error?.message || 'Authentication failed.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setCurrentScreen('landing');
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthError('');
   };
 
   // Sample Chat Messages for AI Coach
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'ai',
-      text: "Hello Sarah! 👋 I'm your HostelNutri AI Coach. I noticed today's mess lunch has lower protein than your gym target. How can I help you eat better today?",
+      text: "Hello {firebaseUser?.displayName?.split(' ')[0] || 'Student'}! 👋 I'm your HostelNutri AI Coach. I noticed today's mess lunch has lower protein than your gym target. How can I help you eat better today?",
       time: '09:30 AM'
     }
   ]);
@@ -172,7 +250,14 @@ export default function App() {
           <span className="text-slate-400 hidden lg:inline font-medium">View Screen:</span>
           <select
             value={currentScreen}
-            onChange={(e) => setCurrentScreen(e.target.value as Screen)}
+            onChange={(e) => {
+              const next = e.target.value as Screen;
+              if (!firebaseUser && next !== 'landing' && next !== 'auth') {
+                setCurrentScreen('auth');
+                return;
+              }
+              setCurrentScreen(next);
+            }}
             className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
             <option value="landing">1. Landing Page</option>
@@ -259,7 +344,7 @@ export default function App() {
                   Log In
                 </button>
                 <button
-                  onClick={() => setCurrentScreen('dashboard')}
+                  onClick={() => setCurrentScreen('auth')}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 dark:shadow-none transition"
                 >
                   Get Started
@@ -284,14 +369,14 @@ export default function App() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={() => setCurrentScreen('dashboard')}
+                  onClick={() => setCurrentScreen('auth')}
                   className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2"
                 >
                   <span>Get Started Free</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setCurrentScreen('menu')}
+                  onClick={() => setCurrentScreen('auth')}
                   className="w-full sm:w-auto px-6 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl text-sm font-bold hover:bg-slate-200 transition"
                 >
                   Explore Mess Features
@@ -400,7 +485,7 @@ export default function App() {
               <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-2xl mx-auto shadow-lg shadow-emerald-200 dark:shadow-none">
                 🌱
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">Welcome Student!</h2>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">{authMode === 'login' ? 'Welcome Back!' : 'Create Your Account'}</h2>
               <p className="text-xs text-slate-500">Sign in to sync your mess menu & fitness targets</p>
             </div>
 
@@ -413,10 +498,8 @@ export default function App() {
 
             <div className="space-y-3">
               <button
-                onClick={() => {
-                  showToast('Signed in with Google!');
-                  setCurrentScreen('dashboard');
-                }}
+onClick={handleGoogleLogin}
+                disabled={authLoading}
                 className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center justify-center gap-3 shadow-xs hover:bg-slate-50 transition"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -436,21 +519,30 @@ export default function App() {
               <div className="space-y-2">
                 <input
                   type="email"
+                  value={authEmail}
+                  onChange={(e) => {
+                    setAuthEmail(e.target.value);
+                    setAuthError('');
+                  }}
                   placeholder="student@college.edu"
+                  autoComplete="email"
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <input
                   type="password"
+                  value={authPassword}
+                  onChange={(e) => {
+                    setAuthPassword(e.target.value);
+                    setAuthError('');
+                  }}
                   placeholder="Password"
+                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <button
-                onClick={() => {
-                  showToast('Logged in successfully!');
-                  setCurrentScreen('dashboard');
-                }}
+                onClick={handleEmailAuth}
                 className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 dark:shadow-none transition"
               >
                 Log In to Account
@@ -467,7 +559,7 @@ export default function App() {
               <div>
                 <p className="text-xs text-slate-400 font-medium">Tuesday, Oct 14</p>
                 <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  Good Morning, Sarah 👋
+                  Good Morning, {firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Student'} 👋
                 </h1>
               </div>
               <button
@@ -1181,7 +1273,7 @@ export default function App() {
               <div className="relative w-20 h-20 mx-auto">
                 <img
                   src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&auto=format"
-                  alt="Sarah Profile"
+                  alt="Profile"
                   className="w-full h-full rounded-full object-cover border-4 border-emerald-500 shadow-md"
                 />
                 <span className="absolute bottom-0 right-0 w-5 h-5 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] text-white">
@@ -1189,7 +1281,9 @@ export default function App() {
                 </span>
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white">Sarah Jenkins</h2>
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">
+  {firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Student'}
+</h2>
                 <p className="text-xs text-slate-400">Hostel 4 • Computer Science, 2nd Year</p>
               </div>
 
@@ -1347,10 +1441,7 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => {
-                showToast('Logged out');
-                setCurrentScreen('auth');
-              }}
+              onClick={handleLogout}
               className="w-full py-3 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
             >
               <LogOut className="w-4 h-4" /> Log Out
