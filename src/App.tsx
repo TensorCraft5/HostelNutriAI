@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from './firebase/firebase';
 import {
@@ -8,7 +8,6 @@ import {
   User,
   Home,
   Bell,
-  Search,
   Plus,
   Flame,
   Droplet,
@@ -16,34 +15,15 @@ import {
   CheckCircle2,
   Sparkles,
   ChevronRight,
-  TrendingUp,
-  Filter,
-  ArrowUpRight,
-  Shield,
-  Apple,
   Zap,
   Clock,
-  Heart,
-  Settings as SettingsIcon,
   Moon,
   Sun,
   Lock,
   HelpCircle,
   LogOut,
-  Sliders,
-  Calendar as CalendarIcon,
-  Award,
-  ShoppingCart,
   Send,
-  Sparkle,
-  ThumbsUp,
-  AlertCircle,
-  X,
-  Smartphone,
   Check,
-  Brain,
-  ChevronDown,
-  Info
 } from 'lucide-react';
 import {
   AreaChart,
@@ -57,8 +37,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line
 } from 'recharts';
 
 // --- TYPES & DATA ---
@@ -71,6 +49,7 @@ type Screen =
   | 'nutrition'
   | 'budget'
   | 'water'
+  | 'protein'
   | 'grocery'
   | 'profile'
   | 'notifications'
@@ -84,22 +63,295 @@ interface NotificationItem {
   type: 'water' | 'meal' | 'streak' | 'exam' | 'budget';
   read: boolean;
 }
+// --- CURRENT HOSTEL MENU ---
+const weeklyMenu = {
+  Monday: {
+    breakfast:
+      'Pongal / Vada / Bread / Butter / Jam / Coconut Chutney / Sambar / Coffee',
+    lunch:
+      'Chappathy / Rice / Sambar / Rajma / Boiled Rice / Sambar / Rasam / Curd / Poriyal / Appalam / Pickle',
+    dinner:
+      'Chappathy / Chicken or Green Peas Masala / Boiled Rice / Sambar / Rasam / Poriyal / Fruit / Milk',
+  },
+
+  Tuesday: {
+    breakfast:
+      'Kal Dosa / Sambar / Kara Chutney / Coffee',
+    lunch:
+      'Chappathy / Dal / Boiled Rice / Varthakuzhambu / Rasam / Poriyal / Curd / Appalam / Pickle',
+    dinner:
+      'Chappathy / Channa Masala / Potato Chips / Boiled Rice / Sambar / Rasam / Poriyal / Fruit / Milk / Sweet',
+  },
+
+  Wednesday: {
+    breakfast:
+      'Idly / Vada / Sambar / Groundnut Chutney / Coffee',
+    lunch:
+      'Chappathy / Yellow Dal / Veg Palau / Onion Raita / Appalam / Pickle',
+    dinner:
+      'Chappathy / Gram Dhall / Chicken 65 or Aloo Mutter / Green Peas / Boiled Rice / Sambar / Rasam / Poriyal / Fruit / Milk',
+  },
+
+  Thursday: {
+    breakfast:
+      'Uthappam / Coconut Chutney / Sambar / Coffee',
+    lunch:
+      'Chappathy / Channa Masala / Boiled Rice / Kara Kuzhambu / Rasam / Poriyal / Curd / Appalam / Pickle',
+    dinner:
+      'Chappathy / Paneer Butter Masala / Egg Curry / 2 Nos / 01 Meal Maker Masala / Boiled Rice / Sambar / Rasam / Poriyal / Fruit / Milk',
+  },
+
+  Friday: {
+    breakfast:
+      'Idly / Vada / Idly podi / Sambar / Coffee',
+    lunch:
+      'Chappathy / Mixed Dal / Boiled Rice / Sambar / Rasam / Poriyal / Curd / Appalam / Pickle',
+    dinner:
+      'Chappathy / Pepper Chicken Gravy or Paneer Butter Masala / Boiled Rice / Sambar / Rasam / Poriyal / Fruit / Milk',
+  },
+
+  Saturday: {
+    breakfast:
+      'Poori / Black channa masala / Coffee',
+    lunch:
+      'Chappathy / Dal Palak / Boiled Rice / Sambar / Rasam / Poriyal / Curd / Appalam / Pickle',
+    dinner:
+      'Chicken Biryani or Veg Biryani / Potato Chips / Raitha / Sweet / Milk / Fruit / EGG Friday/Week once in a Month',
+  },
+
+  Sunday: {
+    breakfast:
+      'Upma / Coconut Chutney / Bread Omelette / Veg Salad / Coffee',
+    lunch:
+      'Chappathy / Mysore Dhal / Boiled Rice / Sambar / Rasam / Poriyal / Curd / Lemon Rice / Appadam / Pickle',
+    dinner:
+      'Chappathy / Onion Tomato Gravy / Egg Podimas or Onion Pakoda / Boiled Rice / Sambar / Rasam / Poriyal / Milk / Fruit',
+  },
+};
+
+const todayName = new Date().toLocaleDateString('en-US', {
+  weekday: 'long',
+});
+
+const todayMenu =
+  weeklyMenu[todayName as keyof typeof weeklyMenu];
+  // Estimated calories and protein for each hostel meal
+const weeklyNutrition = {
+  Monday: {
+    breakfast: { calories: 520, protein: 12 },
+    lunch: { calories: 760, protein: 24 },
+    dinner: { calories: 720, protein: 32 },
+  },
+
+  Tuesday: {
+    breakfast: { calories: 430, protein: 11 },
+    lunch: { calories: 690, protein: 20 },
+    dinner: { calories: 740, protein: 25 },
+  },
+
+  Wednesday: {
+    breakfast: { calories: 460, protein: 14 },
+    lunch: { calories: 620, protein: 20 },
+    dinner: { calories: 780, protein: 34 },
+  },
+
+  Thursday: {
+    breakfast: { calories: 440, protein: 11 },
+    lunch: { calories: 700, protein: 22 },
+    dinner: { calories: 820, protein: 32 },
+  },
+
+  Friday: {
+    breakfast: { calories: 450, protein: 14 },
+    lunch: { calories: 680, protein: 22 },
+    dinner: { calories: 760, protein: 30 },
+  },
+
+  Saturday: {
+    breakfast: { calories: 560, protein: 16 },
+    lunch: { calories: 650, protein: 21 },
+    dinner: { calories: 850, protein: 30 },
+  },
+
+  Sunday: {
+    breakfast: { calories: 540, protein: 18 },
+    lunch: { calories: 720, protein: 22 },
+    dinner: { calories: 700, protein: 27 },
+  },
+};
+
+const todayNutrition =
+  weeklyNutrition[todayName as keyof typeof weeklyNutrition];
+  // Total nutrition for today's complete hostel menu
+const todayMenuTotalCalories =
+  todayNutrition.breakfast.calories +
+  todayNutrition.lunch.calories +
+  todayNutrition.dinner.calories;
+
+const todayMenuTotalProtein =
+  todayNutrition.breakfast.protein +
+  todayNutrition.lunch.protein +
+  todayNutrition.dinner.protein;
+
+  
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [mongoUser, setMongoUser] = useState<any>(null);
+  const [, setAuthChecked] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    age: '',
+    gender: '',
+    height: '',
+    weight: '',
+    goal: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [devicePreview, setDevicePreview] = useState<'mobile' | 'tablet' | 'desktop'>('mobile');
-  const [waterAmount, setWaterAmount] = useState(1750); // ml
-  const waterGoal = 3000;
-  const [budgetLeft, setBudgetLeft] = useState(1850);
-  const totalBudget = 3000;
+  const [waterAmount, setWaterAmount] = useState(0);
+  const [proteinAmount, setProteinAmount] = useState(0);
+  const [calorieAmount, setCalorieAmount] = useState(0);
+  const [isBudgetEditing, setIsBudgetEditing] = useState(false);
+const [budgetInput, setBudgetInput] = useState('');
+  const waterGoal = Number(mongoUser?.dailyWaterGoal) || 3000;
+  const proteinGoal = Number(mongoUser?.dailyProteinGoal) || 75;
+
+  const calorieScore =
+  todayMenuTotalCalories > 0
+    ? Math.min((Number(calorieAmount) / todayMenuTotalCalories) * 100, 100)
+    : 0;
+
+const proteinScore =
+  todayMenuTotalProtein > 0
+    ? Math.min((Number(proteinAmount) / todayMenuTotalProtein) * 100, 100)
+    : 0;
+
+const waterScore =
+  waterGoal > 0
+    ? Math.min((Number(waterAmount) / waterGoal) * 100, 100)
+    : 0;
+
+const healthScore = Math.round(
+  calorieScore * 0.4 +
+  proteinScore * 0.4 +
+  waterScore * 0.2
+);
+  
+  const totalBudget = Number(mongoUser?.monthlyBudget) || 3000;
+  const budgetSpent = Number(mongoUser?.budgetSpent) || 0;
+  
+  const handleAddExpense = async (amount: number) => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  const newSpent = budgetSpent + amount;
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          budgetSpent: newSpent,
+          $push: {
+            expenseHistory: {
+              amount: amount,
+              category: 'Food',
+              description: 'Food expense',
+              date: new Date(),
+            },
+          },
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to save expense');
+    }
+
+    const updatedUser = data.user || data;
+
+    setMongoUser({
+      ...updatedUser,
+      budgetSpent: newSpent,
+    });
+
+    showToast(`Expense ₹${amount} added!`);
+  } catch (error) {
+    console.error('Expense update error:', error);
+    showToast('Failed to save expense.');
+  }
+};
+
+const handleSaveBudget = async () => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  const newBudget = Number(budgetInput);
+
+  if (!newBudget || newBudget <= 0) {
+    showToast('Please enter a valid budget.');
+    return;
+  }
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          monthlyBudget: newBudget,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update budget');
+    }
+
+    setMongoUser(data.user);
+    setIsBudgetEditing(false);
+    setBudgetInput('');
+
+    showToast('Monthly budget updated successfully!');
+  } catch (error) {
+    console.error('Budget update error:', error);
+    showToast('Failed to update budget.');
+  }
+};
+
+const budgetLeft = Math.max(totalBudget - budgetSpent, 0);
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -107,8 +359,47 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
-  }
+  };
 
+  // Sync a Firebase user with the MongoDB backend.
+  // The backend is running on localhost:5000 during development.
+  const syncUserToMongoDB = async (user: any) => {
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(`${apiBaseUrl}/api/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        firebaseUid: user.uid,
+        name: user.displayName || user.email?.split('@')[0] || 'Student',
+        email: user.email || '',
+        age: 20,
+        gender: 'Not specified',
+        height: 168,
+        weight: 60,
+        goal: 'Healthy eating',
+        dailyCalorieGoal: 2000,
+      }),
+    });
+
+    if (!response.ok && response.status !== 409) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || 'Failed to sync user with MongoDB'
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error('MongoDB user sync error:', error);
+    showToast('Firebase login worked, but MongoDB sync failed.');
+    return false;
+  }
+};
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
@@ -120,14 +411,409 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [currentScreen]);
+  }, []);
+ useEffect(() => {
+  if (!firebaseUser?.uid) return;
+
+  const fetchMongoUser = async () => {
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/users/${firebaseUser.uid}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch MongoDB user');
+      }
+
+      const data = await response.json();
+
+      // Works whether backend returns { user: ... } or the user directly
+      const userData = data.user || data;
+
+      setMongoUser(userData);
+
+      setWaterAmount(
+        Number(userData.dailyWaterIntake) || 0
+      );
+      setProteinAmount(
+          Number(userData.dailyProteinIntake) || 0
+        );
+      setCalorieAmount(
+        Number(userData.calorieIntake) || 0
+        );
+
+      
+
+    } catch (error) {
+      console.error(
+        'MongoDB profile fetch error:',
+        error
+      );
+    }
+  };
+
+  fetchMongoUser();
+
+}, [firebaseUser?.uid]);
+
+  const startEditingProfile = () => {
+    setProfileForm({
+      age: String(mongoUser?.age ?? ''),
+      gender: mongoUser?.gender || '',
+      height: String(mongoUser?.height ?? ''),
+      weight: String(mongoUser?.weight ?? ''),
+      goal: mongoUser?.goal || '',
+    });
+    setIsEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  if (
+    !profileForm.age ||
+    !profileForm.height ||
+    !profileForm.weight ||
+    !profileForm.goal
+  ) {
+    showToast('Please fill all required profile fields.');
+    return;
+  }
+
+  try {
+    setProfileSaving(true);
+
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          age: Number(profileForm.age),
+          gender: profileForm.gender || 'Not specified',
+          height: Number(profileForm.height),
+          weight: Number(profileForm.weight),
+          goal: profileForm.goal,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to update profile'
+      );
+    }
+
+    setMongoUser(data.user);
+    setIsEditingProfile(false);
+    showToast('Profile saved successfully!');
+  } catch (error: any) {
+    console.error('Profile update error:', error);
+    showToast(error?.message || 'Failed to save profile.');
+  } finally {
+    setProfileSaving(false);
+  }
+};
+const handleAddWater = async (amount: number) => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  const newAmount = Math.min(
+    waterGoal,
+    waterAmount + amount
+  );
+
+  console.log("WATER BUTTON CLICKED");
+  console.log("OLD WATER:", waterAmount);
+  console.log("ADDING:", amount);
+  console.log("NEW WATER:", newAmount);
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dailyWaterIntake: newAmount,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("WATER SERVER RESPONSE:", data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to save water intake'
+      );
+    }
+
+    const updatedUser = data.user || data;
+
+    console.log(
+      "WATER SAVED AS:",
+      updatedUser.dailyWaterIntake
+    );
+
+    setMongoUser({
+      ...updatedUser,
+      dailyWaterIntake: newAmount,
+    });
+
+    setWaterAmount(newAmount);
+
+    console.log(
+      "SETTING WATER TO:",
+      newAmount
+    );
+
+    showToast(`Added +${amount}ml water!`);
+
+  } catch (error) {
+    console.error(
+      'Water update error:',
+      error
+    );
+
+    showToast('Failed to save water intake.');
+  }
+};
+
+const handleAddProtein = async (amount: number) => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  const newAmount = Math.min(
+    proteinGoal,
+    proteinAmount + amount
+  );
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dailyProteinIntake: newAmount,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to save protein intake'
+      );
+    }
+
+    const updatedUser = data.user || data;
+
+    setMongoUser({
+      ...updatedUser,
+      dailyProteinIntake: newAmount,
+    });
+
+    setProteinAmount(newAmount);
+
+    showToast(`Added +${amount}g protein!`);
+
+  } catch (error) {
+    console.error(
+      'Protein update error:',
+      error
+    );
+
+    showToast('Failed to save protein intake.');
+  }
+};
+
+
+    const handleAddCalories = async (amount: number) => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  const calorieGoal =
+    Number(mongoUser?.dailyCalorieGoal) || 2000;
+
+  const newAmount = Math.min(
+    calorieGoal,
+    calorieAmount + amount
+  );
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          calorieIntake: newAmount,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to save calorie intake'
+      );
+    }
+
+    const updatedUser = data.user || data;
+
+    setMongoUser({
+      ...updatedUser,
+      calorieIntake: newAmount,
+    });
+
+    setCalorieAmount(newAmount);
+
+    showToast(`Added +${amount} kcal!`);
+
+  } catch (error) {
+    console.error(
+      'Calorie update error:',
+      error
+    );
+
+    showToast('Failed to save calorie intake.');
+  }
+};
+
+const handleLogMeal = async (meal: {
+  title: string;
+  cal: number;
+  protein: number;
+}) => {
+  if (!firebaseUser?.uid) {
+    showToast('Please log in first.');
+    return;
+  }
+
+  try {
+    const apiBaseUrl =
+      import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+    const currentCalories =
+      Number(mongoUser?.calorieIntake) || 0;
+
+    const currentProtein =
+      Number(mongoUser?.dailyProteinIntake) || 0;
+
+    const calorieGoal = todayMenuTotalCalories;
+
+const proteinGoal = todayMenuTotalProtein;
+
+    const newCalories = Math.min(
+      calorieGoal,
+      currentCalories + Number(meal.cal)
+    );
+
+    const newProtein = Math.min(
+      proteinGoal,
+      currentProtein + Number(meal.protein)
+    );
+
+    console.log('LOGGING MEAL:', meal);
+    console.log('NEW CALORIES:', newCalories);
+    console.log('NEW PROTEIN:', newProtein);
+
+    const response = await fetch(
+      `${apiBaseUrl}/api/users/${firebaseUser.uid}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          calorieIntake: newCalories,
+          dailyProteinIntake: newProtein,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log('MEAL SAVE RESPONSE:', data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+        data.error ||
+        'Failed to save meal'
+      );
+    }
+
+    const updatedUser = data.user || data;
+
+    setMongoUser({
+      ...updatedUser,
+      calorieIntake: newCalories,
+      dailyProteinIntake: newProtein,
+    });
+
+    setCalorieAmount(newCalories);
+    setProteinAmount(newProtein);
+
+    showToast(
+      `${meal.title} logged! +${meal.cal} kcal, +${meal.protein}g protein`
+    );
+
+  } catch (error) {
+    console.error('MEAL SAVE ERROR:', error);
+    showToast('Failed to save meal.');
+  }
+};
+
 
   const handleGoogleLogin = async () => {
     try {
       setAuthLoading(true);
       setAuthError('');
+
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      await syncUserToMongoDB(result.user);
       showToast('Signed in with Google!');
     } catch (error: any) {
       console.error('Google sign-in error:', error);
@@ -148,10 +834,20 @@ export default function App() {
       setAuthError('');
 
       if (authMode === 'signup') {
-        await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          authEmail.trim(),
+          authPassword
+        );
+
+        await syncUserToMongoDB(result.user);
         showToast('Account created successfully!');
       } else {
-        await signInWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+        await signInWithEmailAndPassword(
+          auth,
+          authEmail.trim(),
+          authPassword
+        );
         showToast('Logged in successfully!');
       }
     } catch (error: any) {
@@ -182,7 +878,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'ai',
-      text: "Hello {firebaseUser?.displayName?.split(' ')[0] || 'Student'}! 👋 I'm your HostelNutri AI Coach. I noticed today's mess lunch has lower protein than your gym target. How can I help you eat better today?",
+      text: "Hello! 👋 I'm your HostelNutri AI Coach. I noticed today's mess lunch has lower protein than your gym target. How can I help you eat better today?",
       time: '09:30 AM'
     }
   ]);
@@ -210,6 +906,7 @@ export default function App() {
   };
 
   // Grocery Cart List
+  const [groceryCategory, setGroceryCategory] = useState('All Items');
   const [groceryItems, setGroceryItems] = useState([
     { id: '1', name: 'Bananas (6 pcs)', category: 'Fruits', price: 35, cal: '530 kcal', tag: 'High Potassium', inCart: false, img: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop&auto=format' },
     { id: '2', name: 'Roasted Chana (200g)', category: 'Healthy Snacks', price: 40, cal: '360 kcal', tag: '18g Protein', inCart: true, img: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=200&h=200&fit=crop&auto=format' },
@@ -233,6 +930,32 @@ export default function App() {
     { id: '3', title: '🔥 5-Day Healthy Eating Streak!', desc: 'You logged all 4 mess meals for 5 consecutive days. Keep it up!', time: 'Yesterday', type: 'streak', read: true },
     { id: '4', title: '🧠 Exam Mode Nutrition Boost', desc: 'Exams in 3 days? AI Coach added anti-fatigue snack recommendations.', time: '2 days ago', type: 'exam', read: true },
   ]);
+
+ 
+  const cartItems = groceryItems.filter((item) => item.inCart);
+
+const cartTotal = cartItems.reduce(
+  (total, item) => total + Number(item.price || 0),
+  0
+);
+  // MongoDB profile values
+  const profileHeight = Number(mongoUser?.height) || 0;
+  const profileWeight = Number(mongoUser?.weight) || 0;
+  const profileBmi =
+    profileHeight > 0 && profileWeight > 0
+      ? profileWeight / Math.pow(profileHeight / 100, 2)
+      : 0;
+
+  const profileBmiStatus =
+    profileBmi === 0
+      ? 'Profile data unavailable'
+      : profileBmi < 18.5
+      ? 'Underweight'
+      : profileBmi < 25
+      ? 'Normal / Healthy'
+      : profileBmi < 30
+      ? 'Overweight'
+      : 'Obesity';
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'} transition-colors duration-200`}>
@@ -268,10 +991,11 @@ export default function App() {
             <option value="nutrition">6. Nutrition Dashboard</option>
             <option value="budget">7. Budget Tracker</option>
             <option value="water">8. Water Tracker</option>
-            <option value="grocery">9. Grocery AI List</option>
-            <option value="profile">10. Student Profile & BMI</option>
-            <option value="notifications">11. Notifications</option>
-            <option value="settings">12. App Settings</option>
+            <option value="protein">9. Protein Tracker</option>
+            <option value="grocery">10. Grocery AI List</option>
+            <option value="profile">11. Student Profile & BMI</option>
+            <option value="notifications">12. Notifications</option>
+            <option value="settings">13. App Settings</option>
           </select>
         </div>
 
@@ -541,11 +1265,35 @@ onClick={handleGoogleLogin}
                 />
               </div>
 
+              {authError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl px-3 py-2">
+                  {authError}
+                </p>
+              )}
+
               <button
                 onClick={handleEmailAuth}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 dark:shadow-none transition"
+                disabled={authLoading}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 dark:shadow-none transition"
               >
-                Log In to Account
+                {authLoading
+                  ? 'Please wait...'
+                  : authMode === 'login'
+                  ? 'Log In to Account'
+                  : 'Create Account'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(prev => (prev === 'login' ? 'signup' : 'login'));
+                  setAuthError('');
+                }}
+                className="w-full text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                {authMode === 'login'
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Log in'}
               </button>
             </div>
           </div>
@@ -557,7 +1305,13 @@ onClick={handleGoogleLogin}
             {/* Top Greeting Header */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-400 font-medium">Tuesday, Oct 14</p>
+               <p className="text-xs text-slate-400 font-medium">
+  {new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })}
+</p>
                 <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                   Good Morning, {firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Student'} 👋
                 </h1>
@@ -579,13 +1333,27 @@ onClick={handleGoogleLogin}
                   <span className="px-2.5 py-0.5 bg-white/20 text-white rounded-full text-[10px] font-bold uppercase tracking-wide">
                     Today's Health Score
                   </span>
-                  <h2 className="text-2xl font-black">Great Shape!</h2>
+                 <h2 className="text-2xl font-black">
+  {healthScore >= 80
+    ? 'Great Shape!'
+    : healthScore >= 60
+    ? 'Good Progress!'
+    : healthScore >= 40
+    ? 'Keep Going!'
+    : 'Let’s Improve!'}
+</h2>
                   <p className="text-xs text-emerald-100 max-w-[180px]">
-                    Your mess lunch fulfilled 75% of your protein goal today.
-                  </p>
+  Your protein intake is{' '}
+  {todayMenuTotalProtein > 0
+    ? Math.round(
+        (Number(proteinAmount) / todayMenuTotalProtein) * 100
+      )
+    : 0}
+  % of today's menu protein target.
+</p>
                 </div>
 
-                {/* Circular Progress 82/100 */}
+                {/* Circular Progress  */}
                 <div className="relative w-24 h-24 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                     <path
@@ -597,7 +1365,7 @@ onClick={handleGoogleLogin}
                     />
                     <path
                       className="text-amber-300"
-                      strokeDasharray="82, 100"
+                     strokeDasharray={`${healthScore}, 100`}
                       strokeWidth="3.5"
                       strokeLinecap="round"
                       stroke="currentColor"
@@ -606,7 +1374,7 @@ onClick={handleGoogleLogin}
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center">
-                    <span className="text-2xl font-black leading-none">82</span>
+                   <span className="text-2xl font-black leading-none">{healthScore}</span>
                     <span className="text-[9px] text-emerald-200 font-bold">/100</span>
                   </div>
                 </div>
@@ -623,9 +1391,14 @@ onClick={handleGoogleLogin}
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Calories</span>
                   <Flame className="w-4 h-4 text-amber-500" />
                 </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white">1,640 <span className="text-xs text-slate-400 font-normal">/ 2,100 kcal</span></p>
+     <p className="text-lg font-black text-slate-900 dark:text-white">
+  {Number(calorieAmount) || 0}kcal
+  <span className="text-xs text-slate-400 font-normal">
+    / {todayMenuTotalCalories} kcal
+  </span>
+</p>
                 <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: '78%' }}></div>
+                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min((calorieAmount / todayMenuTotalCalories) * 100, 100)}%` }}></div>
                 </div>
               </div>
 
@@ -637,9 +1410,15 @@ onClick={handleGoogleLogin}
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Protein</span>
                   <Zap className="w-4 h-4 text-emerald-500" />
                 </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white">58g <span className="text-xs text-slate-400 font-normal">/ 75g</span></p>
+               <p className="text-lg font-black text-slate-900 dark:text-white">
+  {Number(proteinAmount) || 0}g
+  <span className="text-xs text-slate-400 font-normal">
+    / {todayMenuTotalProtein}g
+  </span>
+</p>
+
                 <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: '77%' }}></div>
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min((proteinAmount / todayMenuTotalProtein) * 100, 100)}%` }}></div>
                 </div>
               </div>
 
@@ -651,9 +1430,14 @@ onClick={handleGoogleLogin}
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Water Intake</span>
                   <Droplet className="w-4 h-4 text-sky-500" />
                 </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{waterAmount} <span className="text-xs text-slate-400 font-normal">/ {waterGoal}ml</span></p>
+                <p className="text-lg font-black text-slate-900 dark:text-white">
+  {Number(waterAmount) || 0}ml
+  <span className="text-xs text-slate-400 font-normal">
+    / {waterGoal}ml
+  </span>
+</p>
                 <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-sky-500 h-full rounded-full" style={{ width: `${(waterAmount / waterGoal) * 100}%` }}></div>
+                  <div className="bg-sky-500 h-full rounded-full" style={{ width: `${Math.min((waterAmount / waterGoal) * 100, 100)}%` }}></div>
                 </div>
               </div>
 
@@ -672,16 +1456,57 @@ onClick={handleGoogleLogin}
               </div>
             </div>
 
-            {/* Quick AI Suggestion */}
+
+{/* Today's Hostel Menu Nutrition */}
+<div className="grid grid-cols-2 gap-3">
+
+  {/* Today's Menu Calories */}
+  <div className="p-4 bg-orange-50 dark:bg-slate-800 rounded-2xl border border-orange-100 dark:border-slate-700">
+    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+      🍽️ Today's Menu Calories
+    </p>
+
+    <p className="text-2xl font-black text-orange-500 mt-1">
+      {todayMenuTotalCalories} kcal
+    </p>
+
+    <p className="text-[10px] text-slate-400 mt-1">
+      {todayName} • Full Menu
+    </p>
+  </div>
+
+  {/* Today's Menu Protein */}
+  <div className="p-4 bg-emerald-50 dark:bg-slate-800 rounded-2xl border border-emerald-100 dark:border-slate-700">
+    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+      💪 Today's Menu Protein
+    </p>
+
+    <p className="text-2xl font-black text-emerald-500 mt-1">
+      {todayMenuTotalProtein} g
+    </p>
+
+    <p className="text-[10px] text-slate-400 mt-1">
+      {todayName} • Full Menu
+    </p>
+  </div>
+
+</div>
+
+
+            {/* Your protein intake is looking good...*/}
             <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/50 flex items-start gap-3">
               <div className="p-2 bg-amber-500 text-white rounded-xl text-xs font-bold mt-0.5">
                 💡
               </div>
               <div className="flex-1">
                 <p className="text-xs font-bold text-amber-900 dark:text-amber-200">Quick AI Suggestion</p>
-                <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5 leading-relaxed">
-                  "Today's mess lunch is low in protein. Consider adding roasted chana or 1 packet of curd (₹15) to hit your gym targets."
-                </p>
+               <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
+  {Number(proteinAmount) >= todayMenuTotalProtein
+    ? "Great job! You have reached today's protein target."
+    : Number(proteinAmount) >= todayMenuTotalProtein * 0.75
+    ? "You're close to your protein target. Keep going!"
+    : "Your protein intake is low. Consider adding a protein-rich food."}
+</p>
                 <button
                   onClick={() => setCurrentScreen('ai-coach')}
                   className="mt-2 text-xs font-bold text-amber-900 dark:text-amber-300 underline underline-offset-2 flex items-center gap-1"
@@ -728,10 +1553,7 @@ onClick={handleGoogleLogin}
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setWaterAmount(prev => Math.min(waterGoal, prev + 250));
-                  showToast('Added 250ml water!');
-                }}
+                onClick={() => handleAddWater(250)}
                 className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-xs"
               >
                 + Log
@@ -740,131 +1562,190 @@ onClick={handleGoogleLogin}
           </div>
         )}
 
-        {/* SCREEN 4: TODAY'S HOSTEL MENU */}
-        {currentScreen === 'menu' && (
-          <div className="space-y-5 pb-20">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Today's Hostel Menu</h1>
-                <p className="text-xs text-slate-400">Hostel 4 Mess • Oct 14 Schedule</p>
-              </div>
-              <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-bold">
-                Live Menu
-              </span>
-            </div>
+      {/* SCREEN 4: TODAY'S HOSTEL MENU */}
+{currentScreen === 'menu' && (
+  <div className="space-y-5 pb-20">
 
-            {/* Meal Time Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {['Breakfast', 'Lunch', 'Snacks', 'Dinner'].map((meal, idx) => (
-                <button
-                  key={meal}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                    idx === 1
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {meal}
-                </button>
-              ))}
-            </div>
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
+          Today's Hostel Menu
+        </h1>
 
-            {/* Meal Cards */}
-            <div className="space-y-4">
-              {[
-                {
-                  meal: 'Breakfast (07:30 - 09:30 AM)',
-                  title: 'Aloo Paratha & Mint Chutney + Tea',
-                  cal: 420,
-                  protein: 10,
-                  carbs: 65,
-                  fat: 14,
-                  rating: '7.8/10',
-                  img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=400&h=200&fit=crop&auto=format',
-                  aiSuggestion: "High carbs! Drink 1 glass milk or carry 2 boiled eggs to mess for better protein balance."
-                },
-                {
-                  meal: 'Lunch (12:30 - 02:30 PM)',
-                  title: 'Rajma Masala, Rice, Chapati & Boondi Raita',
-                  cal: 680,
-                  protein: 24,
-                  carbs: 98,
-                  fat: 18,
-                  rating: '8.9/10',
-                  img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=200&fit=crop&auto=format',
-                  aiSuggestion: "Today's lunch is well balanced. Consider adding roasted chana for an extra 8g protein boost."
-                },
-                {
-                  meal: 'Evening Snacks (05:00 - 06:00 PM)',
-                  title: 'Vegetable Samosa & Masala Chai',
-                  cal: 310,
-                  protein: 5,
-                  carbs: 42,
-                  fat: 15,
-                  rating: '6.2/10',
-                  img: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=200&fit=crop&auto=format',
-                  aiSuggestion: "High deep-fry fat. Swap second samosa with fresh fruit from grocery store."
-                },
-                {
-                  meal: 'Dinner (07:30 - 09:30 PM)',
-                  title: 'Paneer Butter Masala, Mixed Dal & Roti',
-                  cal: 590,
-                  protein: 22,
-                  carbs: 60,
-                  fat: 20,
-                  rating: '9.1/10',
-                  img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&h=200&fit=crop&auto=format',
-                  aiSuggestion: "Great dinner option! Skip extra butter on roti to maintain calorie deficit."
-                }
-              ].map((item, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-xs">
-                  <div className="relative h-36">
-                    <img src={item.img} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
-                      {item.meal}
-                    </div>
-                    <div className="absolute top-3 right-3 bg-emerald-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md">
-                      ★ Healthy {item.rating}
-                    </div>
-                  </div>
+        <p className="text-xs text-slate-400">
+          Hostel 4 Mess • {todayName}
+        </p>
+      </div>
 
-                  <div className="p-4 space-y-3">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">{item.title}</h3>
+      <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-bold">
+        Live Menu
+      </span>
+    </div>
 
-                    {/* Macronutrients Grid */}
-                    <div className="grid grid-cols-4 gap-2 text-center p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Calories</p>
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{item.cal} <span className="text-[9px]">kcal</span></p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Protein</p>
-                        <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{item.protein}g</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Carbs</p>
-                        <p className="text-xs font-black text-amber-600">{item.carbs}g</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Fat</p>
-                        <p className="text-xs font-black text-rose-500">{item.fat}g</p>
-                      </div>
-                    </div>
+    {/* Day Card */}
+    <div className="p-4 bg-emerald-500 rounded-2xl text-white shadow-md">
+      <p className="text-xs font-semibold text-emerald-100">
+        Today's Menu
+      </p>
 
-                    {/* AI Coach Suggestion Box */}
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-800/50 flex items-start gap-2.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-emerald-900 dark:text-emerald-300 font-medium leading-relaxed">
-                        <span className="font-bold">AI Tip:</span> {item.aiSuggestion}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <h2 className="text-xl font-black mt-1">
+        {todayName}
+      </h2>
+    </div>
 
+    {/* BREAKFAST */}
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-xs">
+
+      <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/40">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">
+            🌅 Breakfast
+          </h2>
+
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+            07:30 - 09:30 AM
+          </span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          {todayMenu.breakfast}
+        </p>
+        <div className="flex gap-2 mt-3">
+  <span className="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-[10px] font-bold">
+    🔥 {todayNutrition.breakfast.calories} kcal
+  </span>
+
+  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">
+    💪 {todayNutrition.breakfast.protein}g protein
+  </span>
+</div>
+      </div>
+
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={() =>
+            handleLogMeal({
+              title: todayMenu.breakfast,
+              cal: todayNutrition.breakfast.calories,
+protein: todayNutrition.breakfast.protein,
+            })
+          }
+          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+        >
+          🍽️ Log Breakfast
+        </button>
+      </div>
+    </div>
+
+    {/* LUNCH */}
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-xs">
+
+      <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/40">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">
+            🍚 Lunch
+          </h2>
+
+          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            12:30 - 02:30 PM
+          </span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          {todayMenu.lunch}
+        </p>
+        <div className="flex gap-2 mt-3">
+  <span className="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-[10px] font-bold">
+    🔥 {todayNutrition.lunch.calories} kcal
+  </span>
+
+  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">
+    💪 {todayNutrition.lunch.protein}g protein
+  </span>
+</div>
+      </div>
+
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={() =>
+            handleLogMeal({
+              title: todayMenu.lunch,
+             cal: todayNutrition.lunch.calories,
+protein: todayNutrition.lunch.protein,
+            })
+          }
+          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+        >
+          🍽️ Log Lunch
+        </button>
+      </div>
+    </div>
+
+    {/* DINNER */}
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-xs">
+
+      <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">
+            🌙 Dinner
+          </h2>
+
+          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+            07:30 - 09:30 PM
+          </span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          {todayMenu.dinner}
+        </p>
+        <div className="flex gap-2 mt-3">
+  <span className="px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-[10px] font-bold">
+    🔥 {todayNutrition.dinner.calories} kcal
+  </span>
+
+  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">
+    💪 {todayNutrition.dinner.protein}g protein
+  </span>
+</div>
+      </div>
+
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={() =>
+            handleLogMeal({
+              title: todayMenu.dinner,
+             cal: todayNutrition.dinner.calories,
+protein: todayNutrition.dinner.protein,
+            })
+          }
+          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+        >
+          🍽️ Log Dinner
+        </button>
+      </div>
+    </div>
+
+    {/* MENU INFORMATION */}
+    <div className="p-4 bg-sky-50 dark:bg-sky-950/30 rounded-2xl border border-sky-100 dark:border-sky-900/40">
+      <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
+        ℹ️ <span className="font-bold">Hostel Menu:</span>{' '}
+        Today's breakfast, lunch and dinner are displayed from the
+        weekly hostel mess schedule.
+      </p>
+    </div>
+
+  </div>
+)}
         {/* SCREEN 5: AI COACH CHAT */}
         {currentScreen === 'ai-coach' && (
           <div className="flex flex-col h-[700px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-xs">
@@ -957,6 +1838,74 @@ onClick={handleGoogleLogin}
             </div>
 
             {/* Weekly Calories Chart */}
+            {/* Today's Hostel Menu Nutrition */}
+<div className="grid grid-cols-2 gap-3">
+
+  <div className="p-4 bg-orange-50 dark:bg-slate-800 rounded-2xl border border-orange-100 dark:border-slate-700">
+    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+      🍽️ Today's Menu Calories
+    </p>
+
+    <p className="text-2xl font-black text-orange-500 mt-1">
+      {todayMenuTotalCalories} kcal
+    </p>
+
+    <p className="text-[10px] text-slate-400 mt-1">
+      Breakfast + Lunch + Dinner
+    </p>
+  </div>
+
+  <div className="p-4 bg-emerald-50 dark:bg-slate-800 rounded-2xl border border-emerald-100 dark:border-slate-700">
+    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+      💪 Today's Menu Protein
+    </p>
+
+    <p className="text-2xl font-black text-emerald-500 mt-1">
+      {todayMenuTotalProtein} g
+    </p>
+
+    <p className="text-[10px] text-slate-400 mt-1">
+      Breakfast + Lunch + Dinner
+    </p>
+  </div>
+
+</div>
+            {/* Current Calorie Intake */}
+<div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 text-center space-y-3">
+
+  <div className="flex items-center justify-between">
+    <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
+      Calorie Intake
+    </h3>
+
+    <span className="text-xs text-orange-500 font-bold">
+      Goal: {Number(mongoUser?.dailyCalorieGoal) || 2000} kcal/day
+    </span>
+  </div>
+
+  <div>
+    <p className="text-3xl font-black text-orange-500">
+      {calorieAmount} kcal
+    </p>
+
+    <p className="text-[10px] text-slate-400">
+      Current Daily Intake
+    </p>
+  </div>
+
+  <div className="flex justify-center gap-3">
+    {[100, 250, 500].map((amount) => (
+      <button
+        key={amount}
+        onClick={() => handleAddCalories(amount)}
+        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-extrabold transition"
+      >
+        +{amount} kcal
+      </button>
+    ))}
+  </div>
+
+</div>
             <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">Weekly Calorie Consumption (kcal)</h3>
@@ -965,14 +1914,58 @@ onClick={handleGoogleLogin}
               <div className="h-44 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { day: 'Mon', cal: 1850 },
-                    { day: 'Tue', cal: 2100 },
-                    { day: 'Wed', cal: 1780 },
-                    { day: 'Thu', cal: 1950 },
-                    { day: 'Fri', cal: 2200 },
-                    { day: 'Sat', cal: 1690 },
-                    { day: 'Sun', cal: 1920 },
-                  ]}>
+  {
+    day: 'Mon',
+    cal:
+      weeklyNutrition.Monday.breakfast.calories +
+      weeklyNutrition.Monday.lunch.calories +
+      weeklyNutrition.Monday.dinner.calories,
+  },
+  {
+    day: 'Tue',
+    cal:
+      weeklyNutrition.Tuesday.breakfast.calories +
+      weeklyNutrition.Tuesday.lunch.calories +
+      weeklyNutrition.Tuesday.dinner.calories,
+  },
+  {
+    day: 'Wed',
+    cal:
+      weeklyNutrition.Wednesday.breakfast.calories +
+      weeklyNutrition.Wednesday.lunch.calories +
+      weeklyNutrition.Wednesday.dinner.calories,
+  },
+  {
+    day: 'Thu',
+    cal:
+      weeklyNutrition.Thursday.breakfast.calories +
+      weeklyNutrition.Thursday.lunch.calories +
+      weeklyNutrition.Thursday.dinner.calories,
+  },
+  {
+    day: 'Fri',
+    cal:
+      weeklyNutrition.Friday.breakfast.calories +
+      weeklyNutrition.Friday.lunch.calories +
+      weeklyNutrition.Friday.dinner.calories,
+  },
+  {
+    day: 'Sat',
+    cal:
+      weeklyNutrition.Saturday.breakfast.calories +
+      weeklyNutrition.Saturday.lunch.calories +
+      weeklyNutrition.Saturday.dinner.calories,
+  },
+  {
+    day: 'Sun',
+    cal:
+      weeklyNutrition.Sunday.breakfast.calories +
+      weeklyNutrition.Sunday.lunch.calories +
+      weeklyNutrition.Sunday.dinner.calories,
+  },
+]
+                    
+                  }>
                     <XAxis dataKey="day" stroke="#94A3B8" fontSize={10} tickLine={false} />
                     <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: '#0F172A', color: '#fff', borderRadius: '8px', fontSize: '11px' }} />
@@ -984,21 +1977,96 @@ onClick={handleGoogleLogin}
 
             {/* Protein Intake Trend Chart */}
             <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">Protein Intake Target Progress (g)</h3>
-                <span className="text-xs text-emerald-600 font-bold">Goal: 75g/day</span>
-              </div>
+              <div>
+  <div className="flex items-center justify-between">
+    <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
+      Protein Intake Target Progress (g)
+    </h3>
+
+    <span className="text-xs text-emerald-600 font-bold">
+      Goal: {proteinGoal}g/day
+    </span>
+  </div>
+
+  {/* Current Saved Protein Intake */}
+  <div className="mt-3 text-center">
+    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+      {proteinAmount} g
+    </p>
+
+    <p className="text-[10px] text-slate-400">
+      Current Protein Intake
+    </p>
+  </div>
+
+  {/* Protein Add Buttons */}
+  <div className="flex justify-center gap-3 mt-3">
+    {[10, 20, 30].map((amount) => (
+      <button
+        key={amount}
+        onClick={() => handleAddProtein(amount)}
+        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+      >
+        +{amount}g
+      </button>
+    ))}
+  </div>
+</div>
               <div className="h-44 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={[
-                    { day: 'Mon', protein: 55 },
-                    { day: 'Tue', protein: 72 },
-                    { day: 'Wed', protein: 68 },
-                    { day: 'Thu', protein: 78 },
-                    { day: 'Fri', protein: 62 },
-                    { day: 'Sat', protein: 80 },
-                    { day: 'Sun', protein: 75 },
-                  ]}>
+  {
+    day: 'Mon',
+    protein:
+      weeklyNutrition.Monday.breakfast.protein +
+      weeklyNutrition.Monday.lunch.protein +
+      weeklyNutrition.Monday.dinner.protein,
+  },
+  {
+    day: 'Tue',
+    protein:
+      weeklyNutrition.Tuesday.breakfast.protein +
+      weeklyNutrition.Tuesday.lunch.protein +
+      weeklyNutrition.Tuesday.dinner.protein,
+  },
+  {
+    day: 'Wed',
+    protein:
+      weeklyNutrition.Wednesday.breakfast.protein +
+      weeklyNutrition.Wednesday.lunch.protein +
+      weeklyNutrition.Wednesday.dinner.protein,
+  },
+  {
+    day: 'Thu',
+    protein:
+      weeklyNutrition.Thursday.breakfast.protein +
+      weeklyNutrition.Thursday.lunch.protein +
+      weeklyNutrition.Thursday.dinner.protein,
+  },
+  {
+    day: 'Fri',
+    protein:
+      weeklyNutrition.Friday.breakfast.protein +
+      weeklyNutrition.Friday.lunch.protein +
+      weeklyNutrition.Friday.dinner.protein,
+  },
+  {
+    day: 'Sat',
+    protein:
+      weeklyNutrition.Saturday.breakfast.protein +
+      weeklyNutrition.Saturday.lunch.protein +
+      weeklyNutrition.Saturday.dinner.protein,
+  },
+  {
+    day: 'Sun',
+    protein:
+      weeklyNutrition.Sunday.breakfast.protein +
+      weeklyNutrition.Sunday.lunch.protein +
+      weeklyNutrition.Sunday.dinner.protein,
+  },
+]
+                   
+                  }>
                     <defs>
                       <linearGradient id="proteinGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/>
@@ -1076,13 +2144,81 @@ onClick={handleGoogleLogin}
                 </div>
               </div>
 
-              <div className="mt-4 space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-300">
-                  <span>Spent: ₹1,150 (38%)</span>
-                  <span>Days Left: 16</span>
-                </div>
+             {/* Monthly Budget Card */}
+<div className="p-5 bg-slate-900 text-white rounded-3xl shadow-xl relative">
+
+  <div className="flex justify-between items-start">
+
+    <div>
+      <p className="text-xs text-slate-400 font-medium">
+        Monthly Food & Grocery Budget
+      </p>
+
+      {isBudgetEditing ? (
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-2xl font-bold">₹</span>
+
+          <input
+            type="number"
+            value={budgetInput}
+            onChange={(e) => setBudgetInput(e.target.value)}
+            placeholder={String(totalBudget)}
+            className="w-32 px-3 py-2 rounded-xl bg-slate-800 text-white border border-slate-600 outline-none focus:border-emerald-400"
+          />
+
+          <button
+            type="button"
+            onClick={handleSaveBudget}
+            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-xs font-bold"
+          >
+            Save
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsBudgetEditing(false);
+              setBudgetInput('');
+            }}
+            className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-bold"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 mt-1">
+          <h2 className="text-3xl font-black">
+            ₹{totalBudget.toLocaleString('en-IN')}
+          </h2>
+
+          <button
+            type="button"
+            onClick={() => {
+              setBudgetInput(String(totalBudget));
+              setIsBudgetEditing(true);
+            }}
+            className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold"
+          >
+            ✏️ Edit
+          </button>
+        </div>
+      )}
+    </div>
+
+    <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl">
+      <Wallet className="w-5 h-5" />
+    </div>
+
+  </div>
+
+
                 <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-400 h-full rounded-full" style={{ width: '38%' }}></div>
+                  <div
+                    className="bg-emerald-400 h-full rounded-full"
+                    style={{
+                      width: `${Math.min((budgetSpent / totalBudget) * 100, 100)}%`,
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -1117,20 +2253,38 @@ onClick={handleGoogleLogin}
             {/* Expense History List */}
             <div className="space-y-2">
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Recent Expenses</h3>
+              <button
+                   onClick={() => handleAddExpense(100)}
+                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold"
+                   >
+                  + Add ₹100 Expense
+                    </button>
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-                {[
-                  { name: 'College Canteen Coffee & Egg Roll', date: 'Today, 04:15 PM', amount: '- ₹85', cat: 'Canteen' },
-                  { name: 'Grocery Store (Oats & Fruit)', date: 'Yesterday, 06:30 PM', amount: '- ₹220', cat: 'Grocery' },
-                  { name: 'Mess Extra Coupon (Paneer)', date: 'Oct 12, 01:10 PM', amount: '- ₹60', cat: 'Mess Extra' }
-                ].map((exp, i) => (
-                  <div key={i} className="p-3 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{exp.name}</p>
-                      <p className="text-[10px] text-slate-400">{exp.date}</p>
-                    </div>
-                    <span className="font-black text-rose-500">{exp.amount}</span>
-                  </div>
-                ))}
+               {(mongoUser?.expenseHistory || [])
+  .slice()
+  .reverse()
+  .map((exp: any, i: number) => (
+    <div
+      key={i}
+      className="p-3 flex items-center justify-between text-xs"
+    >
+      <div>
+        <p className="font-bold text-slate-800 dark:text-slate-200">
+          {exp.description || 'Food expense'}
+        </p>
+
+        <p className="text-[10px] text-slate-400">
+          {exp.date
+            ? new Date(exp.date).toLocaleString()
+            : 'Recently'}
+        </p>
+      </div>
+
+      <span className="font-black text-rose-500">
+        - ₹{exp.amount}
+      </span>
+    </div>
+  ))}
               </div>
             </div>
           </div>
@@ -1157,7 +2311,7 @@ onClick={handleGoogleLogin}
                   />
                   <path
                     className="text-sky-500"
-                    strokeDasharray={`${(waterAmount / waterGoal) * 100}, 100`}
+                    strokeDasharray={`${Math.min((waterAmount / waterGoal) * 100, 100)}, 100`}
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     stroke="currentColor"
@@ -1177,10 +2331,7 @@ onClick={handleGoogleLogin}
                 {[150, 250, 500].map((amount) => (
                   <button
                     key={amount}
-                    onClick={() => {
-                      setWaterAmount(prev => Math.min(waterGoal, prev + amount));
-                      showToast(`Added +${amount}ml water!`);
-                    }}
+                    onClick={() => handleAddWater(amount)}
                     className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-extrabold shadow-md shadow-sky-200 dark:shadow-none transition"
                   >
                     +{amount} ml
@@ -1209,6 +2360,107 @@ onClick={handleGoogleLogin}
         )}
 
         {/* SCREEN 9: GROCERY SUGGESTIONS */}
+        {currentScreen === 'protein' && (
+          <div className="space-y-6 pb-20 text-center">
+            <div>
+              <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                Protein Tracker
+              </h1>
+              <p className="text-xs text-slate-400">
+                Track your daily protein intake
+              </p>
+            </div>
+
+            {/* Large Circular Tracker */}
+            <div className="p-8 bg-gradient-to-b from-emerald-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-3xl border border-emerald-100 dark:border-slate-700 shadow-xs">
+              <div className="relative w-48 h-48 mx-auto flex items-center justify-center">
+                <svg
+                  className="w-full h-full transform -rotate-90"
+                  viewBox="0 0 36 36"
+                >
+                  <path
+                    className="text-emerald-100 dark:text-slate-800"
+                    strokeWidth="3.5"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+
+                  <path
+                    className="text-emerald-500"
+                    strokeDasharray={`${Math.min(
+                      (proteinAmount / proteinGoal) * 100,
+                      100
+                    )}, 100`}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                </svg>
+
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-3xl mb-1">🥩</span>
+
+                  <span className="text-3xl font-black text-slate-900 dark:text-white">
+                    {proteinAmount}
+                  </span>
+
+                  <span className="text-xs text-slate-400 font-medium">
+                    / {proteinGoal} g Goal
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Protein Buttons */}
+              <div className="flex justify-center gap-3 mt-6">
+                {[10, 20, 30].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => handleAddProtein(amount)}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold shadow-md shadow-emerald-200 dark:shadow-none transition"
+                  >
+                    +{amount} g
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Protein Statistics */}
+            <div className="grid grid-cols-2 gap-3 text-left">
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">
+                  Today's Progress
+                </p>
+
+                <p className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                  {Math.round(
+                    (proteinAmount / proteinGoal) * 100
+                  )}% Completed
+                </p>
+
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+                  Remaining: {Math.max(proteinGoal - proteinAmount, 0)} g
+                </p>
+              </div>
+
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">
+                  Daily Goal
+                </p>
+
+                <p className="text-lg font-black text-emerald-500 mt-0.5">
+                  💪 {proteinGoal} g
+                </p>
+
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Protein target
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {currentScreen === 'grocery' && (
           <div className="space-y-5 pb-20">
             <div>
@@ -1218,21 +2470,30 @@ onClick={handleGoogleLogin}
 
             {/* Category Filter Chips */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {['All Items', 'Fruits', 'Protein', 'Healthy Snacks', 'Breakfast'].map((cat, i) => (
-                <button
-                  key={cat}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
-                    i === 0 ? 'bg-emerald-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            {['All Items', 'Fruits', 'Protein', 'Healthy Snacks', 'Breakfast'].map((cat) => (
+  <button
+    key={cat}
+    onClick={() => setGroceryCategory(cat)}
+    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
+      groceryCategory === cat
+        ? 'bg-emerald-500 text-white'
+        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+    }`}
+  >
+    {cat}
+  </button>
+))}
             </div>
 
             {/* Item Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {groceryItems.map((item) => (
+              {groceryItems
+  .filter(
+    (item) =>
+      groceryCategory === 'All Items' ||
+      item.category === groceryCategory
+  )
+  .map((item) => (
                 <div key={item.id} className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xs flex gap-3">
                   <img src={item.img} alt={item.name} className="w-20 h-20 rounded-xl object-cover shrink-0" />
                   <div className="flex-1 flex flex-col justify-between">
@@ -1264,7 +2525,63 @@ onClick={handleGoogleLogin}
             </div>
           </div>
         )}
+   
+{/* Grocery Cart Summary */}
+{currentScreen === 'grocery' && (
+  <div className="mt-5 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-emerald-100 dark:border-slate-700 shadow-sm">
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+        🛒 Grocery Cart
+      </h3>
 
+      <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-bold">
+        {cartItems.length} item{cartItems.length !== 1 ? 's' : ''}
+      </span>
+    </div>
+
+    {cartItems.length === 0 ? (
+      <p className="text-xs text-slate-400 text-center py-4">
+        Your cart is empty. Add some groceries above.
+      </p>
+    ) : (
+      <div className="space-y-2">
+        {cartItems.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl"
+          >
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-white">
+                {item.name}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                ₹{item.price}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => toggleCart(item.id)}
+              className="px-2.5 py-1 bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 rounded-lg text-[10px] font-bold"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+
+        <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+            Total
+          </span>
+
+          <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+            ₹{cartTotal}
+          </span>
+        </div>
+      </div>
+    )}
+  </div>
+)}
         {/* SCREEN 10: STUDENT PROFILE & BMI */}
         {currentScreen === 'profile' && (
           <div className="space-y-5 pb-20">
@@ -1280,29 +2597,177 @@ onClick={handleGoogleLogin}
                   ✓
                 </span>
               </div>
+
               <div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">
-  {firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Student'}
-</h2>
-                <p className="text-xs text-slate-400">Hostel 4 • Computer Science, 2nd Year</p>
+                  {firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Student'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {firebaseUser?.email || 'Student profile'}
+                </p>
               </div>
 
-              <div className="flex justify-center gap-2 pt-1">
+              <div className="flex justify-center gap-2 pt-1 flex-wrap">
                 <span className="px-3 py-1 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-full">
-                  🎯 Muscle Gain & Gym
+                  🎯 {mongoUser?.goal || 'Healthy eating'}
                 </span>
                 <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-full">
-                  🥦 Eggetarian
+                  👤 {mongoUser?.gender || 'Not specified'}
                 </span>
               </div>
             </div>
+
+            {/* Edit Profile Form */}
+            {isEditingProfile && (
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    Edit Profile
+                  </h3>
+                  <button
+                    onClick={() => setIsEditingProfile(false)}
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500">Age</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={profileForm.age}
+                      onChange={(e) =>
+                        setProfileForm(prev => ({ ...prev, age: e.target.value }))
+                      }
+                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500">Gender</label>
+                    <select
+                      value={profileForm.gender}
+                      onChange={(e) =>
+                        setProfileForm(prev => ({ ...prev, gender: e.target.value }))
+                      }
+                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="">Not specified</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500">Height (cm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={profileForm.height}
+                      onChange={(e) =>
+                        setProfileForm(prev => ({ ...prev, height: e.target.value }))
+                      }
+                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500">Weight (kg)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={profileForm.weight}
+                      onChange={(e) =>
+                        setProfileForm(prev => ({ ...prev, weight: e.target.value }))
+                      }
+                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500">Goal</label>
+                  <select
+                    value={profileForm.goal}
+                    onChange={(e) =>
+                      setProfileForm(prev => ({ ...prev, goal: e.target.value }))
+                    }
+                    className="w-full mt-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Select goal</option>
+                    <option value="Healthy eating">Healthy eating</option>
+                    <option value="Weight loss">Weight loss</option>
+                    <option value="Weight gain">Weight gain</option>
+                    <option value="Muscle gain">Muscle gain</option>
+                    <option value="Maintain weight">Maintain weight</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={profileSaving}
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 dark:shadow-none transition flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  {profileSaving ? 'Saving...' : 'Save Profile'}
+                </button>
+              </div>
+            )}
+
+            {/* Profile Details */}
+            {!isEditingProfile && (
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Age</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                      {mongoUser?.age ?? '--'} years
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Gender</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                      {mongoUser?.gender || 'Not specified'}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Height</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                      {profileHeight || '--'} cm
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Weight</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                      {profileWeight || '--'} kg
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={startEditingProfile}
+                  className="w-full mt-3 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition"
+                >
+                  ✏️ Edit Profile
+                </button>
+              </div>
+            )}
 
             {/* BMI Card */}
             <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-md flex items-center justify-between">
               <div>
                 <p className="text-xs text-emerald-100 font-bold uppercase">Body Mass Index (BMI)</p>
-                <h3 className="text-2xl font-black mt-0.5">21.4 <span className="text-xs font-semibold">Normal / Healthy</span></h3>
-                <p className="text-[11px] text-emerald-100 mt-1">Height: 168 cm | Weight: 60.5 kg</p>
+                <h3 className="text-2xl font-black mt-0.5">
+                  {profileBmi > 0 ? profileBmi.toFixed(1) : '--'}{' '}
+                  <span className="text-xs font-semibold">{profileBmiStatus}</span>
+                </h3>
+                <p className="text-[11px] text-emerald-100 mt-1">
+                  Height: {profileHeight || '--'} cm | Weight: {profileWeight || '--'} kg
+                </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center font-black text-lg">
                 👍
@@ -1461,6 +2926,7 @@ onClick={handleGoogleLogin}
             ].map((item) => {
               const IconComp = item.icon;
               const isActive = currentScreen === item.id;
+              
               return (
                 <button
                   key={item.id}
